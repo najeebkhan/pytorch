@@ -169,7 +169,14 @@ TypePtr ScriptTypeParser::parseTypeFromExpr(const Expr& expr) const {
     if (auto typePtr = ClassType::get(*name)) {
       return typePtr;
     }
-    throw ErrorReport(expr) << "Unknown type name " << *name;
+
+    std::stringstream extra_info;
+    if (*name == "double") {
+      extra_info << " (did you mean 'float'?)";
+    }
+
+    throw ErrorReport(expr)
+        << "Unknown type name '" << *name << "'" << extra_info.str();
   }
   throw ErrorReport(expr.range())
       << "Expression of type " << kindToString(expr.kind())
