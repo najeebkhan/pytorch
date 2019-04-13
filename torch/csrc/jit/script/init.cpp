@@ -601,6 +601,15 @@ std::shared_ptr<SugaredValue> toSugaredValue(
     return std::make_shared<BooleanDispatchValue>(std::move(dispatched_fn));
   }
 
+  py::bool_ isClass = py::module::import("inspect").attr("isclass")(obj);
+  if (py::cast<bool>(isClass)) {
+    py::str qualifiedName =
+        py::module::import("torch.jit").attr("_qualified_name")(obj);
+    if (auto classType = ClassType::get(qualifiedName)) {
+      return std::make_shared<ClassValue>(classType);
+    }
+  }
+
   return std::make_shared<PythonValue>(obj);
 }
 
@@ -655,7 +664,20 @@ struct PythonResolver : public Resolver {
   }
 
   TypePtr resolveType(const std::string& name) const override {
-    return ClassType::get(name);
+    AutoGIL ag;
+    py::object obj = rcb_(name);
+    if (obj.is(py::none())) {
+      return nullptr;
+    }
+    py::bool_ isClass = py::module::import("inspect").attr("isclass")(obj);
+    if (!py::cast<bool>(isClass)) {
+      return nullptr;
+    }
+
+    py::str qualifiedName =
+        py::module::import("torch.jit").attr("_qualified_name")(obj);
+
+    return ClassType::get(qualifiedName);
   }
 
  private:

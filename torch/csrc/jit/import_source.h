@@ -18,6 +18,9 @@ TORCH_API void import_methods(
 
 // Defined the list of classes in `src`.
 TORCH_API void import_libs(
+    // Qualifier for any classes that `src` defines. Looks like a module path,
+    // like "foo.bar.baz"
+    const std::string& class_qualifier,
     const std::string& src,
     const std::vector<at::Tensor>& constant_table);
 
