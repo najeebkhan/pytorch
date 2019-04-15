@@ -11371,13 +11371,6 @@ a")
             def fn():
                 return random.randint()
 
-    def test_type_suggestion(self):
-        with self.assertRaisesRegex(RuntimeError, "did you mean ('float')?"):
-            @torch.jit.script
-            def fn(x):
-                # type: (double) -> int
-                return int(2.3)
-
 
 class MnistNet(nn.Module):
     def __init__(self):
