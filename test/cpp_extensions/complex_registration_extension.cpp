@@ -15,6 +15,7 @@
 #include <c10/core/TensorImpl.h>
 #include <c10/core/UndefinedTensorImpl.h>
 #include <c10/util/Optional.h>
+#include <ATen/native/TensorFactories.h>
 
 #include <cstddef>
 #include <functional>
@@ -28,7 +29,7 @@ namespace at {
 struct CPUComplexFloatType : public at::CPUTypeDefault {
   CPUComplexFloatType()
       : CPUTypeDefault(
-            CPUTensorId(),
+            ComplexCPUTensorId(),
             /*is_variable=*/false,
             /*is_undefined=*/false) {}
 
@@ -39,9 +40,25 @@ struct CPUComplexFloatType : public at::CPUTypeDefault {
   TypeID ID() const override;
 
   Tensor empty(IntArrayRef size, const TensorOptions & options) const override {
-    // Delegate to the appropriate cpu tensor factory
-    const DeviceGuard device_guard(options.device());
-    return at::native::empty_cpu(/* actuals */ size, options);
+    AT_ASSERT(options.device().is_cpu());
+
+    native::check_size_nonnegative(sizes);
+    auto* allocator = at::getCPUAllocator();
+    int64_t nelements = at::prod_intlist(sizes);
+    auto dtype = options.dtype();
+    auto storage_impl = c10::make_intrusive<StorageImpl>(
+        dtype,
+        nelements,
+        allocator->allocate(nelements * dtype.itemsize()),
+        allocator,
+        /*resizable=*/true);
+
+    auto tensor = detail::make_tensor<TensorImpl>(storage_impl, at::ComplexCPUTensorId());
+    // Default TensorImpl has size [0]
+    if (size.size() != 1 || size[0] != 0) {
+      tensor.unsafeGetTensorImpl()->set_sizes_contiguous(size);
+    }
+    return tensor;
   }
 };
 
@@ -49,7 +66,7 @@ struct ComplexHooks : public at::ComplexHooksInterface {
   ComplexHooks(ComplexHooksArgs) {}
   void registerComplexTypes(Context* context) const override {
     context->registerType(
-        Backend::CPU, ScalarType::ComplexFloat, new CPUComplexFloatType());
+        Backend::ComplexCPU, ScalarType::ComplexFloat, new CPUComplexFloatType());
   }
 };
 
@@ -62,7 +79,7 @@ caffe2::TypeMeta CPUComplexFloatType::typeMeta() const {
 }
 
 Backend CPUComplexFloatType::backend() const {
-  return Backend::CPU;
+  return Backend::ComplexCPU;
 }
 
 const char* CPUComplexFloatType::toString() const {
