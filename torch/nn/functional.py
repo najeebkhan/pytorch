@@ -901,6 +901,27 @@ def feature_alpha_dropout(input, p=0.5, training=False, inplace=False):
             if inplace
             else _VF.feature_alpha_dropout(input, p, training))
 
+@weak_script
+def sparseout(input, p=0.5, training=True, inplace=False):
+    # type: (Tensor, float, bool, bool) -> Tensor
+    r"""
+    During training, randomly zeroes some of the elements of the input
+    tensor with probability :attr:`p` using samples from a Bernoulli
+    distribution.
+
+    See :class:`~torch.nn.Dropout` for details.
+
+    Args:
+        p: probability of an element to be zeroed. Default: 0.5
+        training: apply dropout if is ``True``. Default: ``True``
+        inplace: If set to ``True``, will do this operation in-place. Default: ``False``
+    """
+    if p < 0. or p > 1.:
+        raise ValueError("dropout probability has to be between 0 and 1, "
+                         "but got {}".format(p))
+    return (_VF.dropout_(input, p, training)
+            if inplace
+            else _VF.dropout(input, p, training))
 
 @weak_script
 def threshold(input, threshold, value, inplace=False):
